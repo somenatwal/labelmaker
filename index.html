@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Label Maker</title>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Label Maker"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon.png"/>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap');
+:root{--bg:#0a0a0a;--card:#141414;--card2:#1c1c1c;--border:#272727;--gold:#d4a843;--gold2:#f0c060;--red:#c0392b;--text:#efefef;--muted:#666;--radius:12px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.hdr{width:100%;background:#111;border-bottom:1px solid var(--border);padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.hdr-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--gold)}
+.hdr-sub{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
+.hdr-badge{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:4px 10px}
+.main{width:100%;max-width:500px;padding:16px 14px 60px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.card-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-head-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.card-body{padding:14px}
+#video-wrap{position:relative;width:100%;border-radius:8px;overflow:hidden;background:#000;display:none;min-height:200px}
+.scan-hint{font-size:11px;color:var(--muted);text-align:center;line-height:1.5;padding:0 4px}
+.scan-hint b{color:#999}
+.btn{border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;padding:12px 16px;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.97)}
+.btn-gold{background:var(--gold);color:#000}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--muted);font-size:13px;letter-spacing:1px;padding:10px 14px}
+.btn-red{background:var(--red);color:#fff}
+.btn-full{width:100%}
+.btn-print{background:linear-gradient(135deg,var(--gold),#b8902e);color:#000;font-size:20px;padding:16px;border-radius:var(--radius);box-shadow:0 4px 24px rgba(212,168,67,.25)}
+.btn-print:disabled{background:#1a1a1a;color:#333;box-shadow:none;cursor:default}
+.field{display:flex;flex-direction:column;gap:6px}
+.field-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.inp{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;outline:none;width:100%;transition:border-color .2s}
+.inp:focus{border-color:var(--gold)}
+.inp::placeholder{color:#3a3a3a}
+.inp.filled{border-color:#d4a84344;background:#181508;color:var(--gold2)}
+.inp-price-wrap{position:relative}
+.inp-price-sym{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--gold);pointer-events:none}
+.inp-price{padding-left:28px!important;font-family:'Barlow Condensed',sans-serif!important;font-size:24px!important;font-weight:700!important;color:var(--gold)!important;letter-spacing:1px}
+.char-count{font-size:10px;text-align:right;transition:color .2s}
+.tax-row{display:flex;gap:8px}
+.tax-btn{flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;text-align:center}
+.tax-btn.active-none{border-color:#555;color:#aaa;background:#222}
+.tax-btn.active-tax{border-color:var(--gold);color:var(--gold);background:#1e1a0a}
+.tax-btn.active-crv{border-color:#4a9eff;color:#4a9eff;background:#0a1220}
+.preview-wrap{display:flex;justify-content:center;padding:8px 0}
+.label-outer{width:248px;height:116px;background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,.5);font-family:'Barlow Condensed',sans-serif;color:#000;display:grid;grid-template-columns:1fr auto;grid-template-rows:1fr auto;padding:8px 10px;gap:0 8px}
+.label-name{font-size:10px;font-weight:700;line-height:1.2;text-transform:uppercase;letter-spacing:.3px;color:#111;word-break:break-word;grid-column:1;grid-row:1;align-self:start}
+.label-bc-wrap{grid-column:1;grid-row:2;align-self:end;display:flex;flex-direction:column;gap:1px}
+.label-barcode-num{font-family:monospace;font-size:6px;color:#555;letter-spacing:.5px}
+.label-price-col{grid-column:2;grid-row:1/3;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px}
+.label-price{font-size:28px;font-weight:900;line-height:1;color:#000;letter-spacing:-1px;white-space:nowrap}
+.label-tax-badge{font-size:7px;font-weight:700;color:#c0392b;text-align:right;line-height:1.2;display:none;white-space:nowrap}
+canvas.bc{display:block;width:130px;height:28px}
+.status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--border);color:var(--muted);background:var(--card2)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.status-dot.scanning{background:#4ade80;box-shadow:0 0 8px #4ade8099;animation:pulse 1s infinite}
+.status-dot.found{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.spinner{width:14px;height:14px;border:2px solid #333;border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#222;color:var(--text);font-size:13px;font-weight:600;padding:10px 20px;border-radius:30px;border:1px solid #333;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.divider{height:1px;background:var(--border)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div>
+    <div class="hdr-title">⬡ Label Maker</div>
+    <div class="hdr-sub">Brother QL-810W · 29mm Roll</div>
+  </div>
+  <div class="hdr-badge">SPS 520 Ready</div>
+</div>
+
+<div class="main">
+
+  <div class="card">
+    <div class="card-head">
+      <span class="card-head-label">📷 Step 1 — Scan Barcode</span>
+      <div class="status-pill"><div class="status-dot" id="status-dot"></div><span id="status-text">Ready</span></div>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+      <div id="video-wrap"></div>
+      <button class="btn btn-gold btn-full" id="scan-btn" onclick="toggleScan()">
+        <span id="scan-btn-icon">📷</span><span id="scan-btn-text">Scan Barcode</span>
+      </button>
+      <div class="divider"></div>
+      <div class="field">
+        <div class="field-label">Or enter barcode manually</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="inp" id="manual-bc" placeholder="Type barcode then press Enter…" maxlength="20" onkeydown="if(event.key==='Enter')applyManual()"/>
+          <button class="btn btn-outline" onclick="applyManual()" style="white-space:nowrap;flex-shrink:0">Use</button>
+        </div>
+      </div>
+      <div class="scan-hint">💡 <b>iPhone tip:</b> Open Camera app → scan bottle → tap the number → copy → paste above</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="card-head-label">✏️ Step 2 — Verify Details</span>
+      <div class="spinner" id="lookup-spinner"></div>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+      <div class="field">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="field-label">Product Name</div>
+          <div class="char-count" id="char-count" style="color:var(--muted)">0 / 24</div>
+        </div>
+        <input class="inp" id="item-name" maxlength="24" placeholder="Auto-filled from scan…" oninput="this.value=this.value.toUpperCase();onNameInput();updatePreview()"/>
+      </div>
+      <div class="field">
+        <div class="field-label">Barcode</div>
+        <input class="inp" id="item-bc" placeholder="Auto-filled from scan…" oninput="updatePreview()"/>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 2px 0">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Auto Name Lookup</span>
+          <span style="font-size:11px;color:#444" id="auto-name-sub">On — auto-fills name from barcode</span>
+        </div>
+        <div id="auto-name-toggle" onclick="toggleAutoName()" style="width:46px;height:26px;border-radius:13px;background:var(--gold);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0">
+          <div id="auto-name-knob" style="position:absolute;top:3px;left:23px;width:20px;height:20px;border-radius:50%;background:#000;transition:left .2s"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="card-head-label">💵 Step 3 — Price, Tax &amp; Category</span></div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+      <div class="field">
+        <div class="field-label">Price</div>
+        <div class="inp-price-wrap">
+          <span class="inp-price-sym">$</span>
+          <input class="inp inp-price" id="item-price" type="number" min="0" step="0.01" placeholder="0.00" oninput="updatePreview()"/>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Tax Label (corner of tag)</div>
+        <div class="tax-row">
+          <button class="tax-btn active-none" id="tax-none" onclick="setTax('none')">None</button>
+          <button class="tax-btn" id="tax-tax" onclick="setTax('tax')">+ Tax</button>
+          <button class="tax-btn" id="tax-crv" onclick="setTax('crv')">+ Tax / CRV</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Category</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="tax-btn active-none" id="cat-Beer" onclick="setCategory('Beer')">🍺 Beer</button>
+          <button class="tax-btn" id="cat-Liquor" onclick="setCategory('Liquor')">🥃 Liquor</button>
+          <button class="tax-btn" id="cat-RTD" onclick="setCategory('RTD')">🥤 RTD</button>
+          <button class="tax-btn" id="cat-Wine" onclick="setCategory('Wine')">🍷 Wine</button>
+          <button class="tax-btn" id="cat-NA Drinks" onclick="setCategory('NA Drinks')">💧 NA Drinks</button>
+          <button class="tax-btn" id="cat-Food" onclick="setCategory('Food')">🍔 Food</button>
+          <button class="tax-btn" id="cat-Household Items" onclick="setCategory('Household Items')">🏠 Household</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="card-head-label">👁 Label Preview</span></div>
+    <div class="card-body">
+      <div class="preview-wrap">
+        <div class="label-outer">
+          <div class="label-name" id="lbl-name">PRODUCT NAME</div>
+          <div class="label-bc-wrap">
+            <canvas class="bc" id="lbl-canvas" width="260" height="56"></canvas>
+            <div class="label-barcode-num" id="lbl-bcnum"></div>
+          </div>
+          <div class="label-price-col">
+            <div class="label-price" id="lbl-price">$-.--</div>
+            <div class="label-tax-badge" id="lbl-tax">+TAX</div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:8px">
+        Print: <b style="color:#666">Landscape</b> · Paper <b style="color:#666">29×62mm</b> · Margins <b style="color:#666">None</b> · Scale <b style="color:#666">100%</b>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-print btn-full" id="submit-btn" onclick="submitToSheet()" disabled>
+    📋 SUBMIT TO SHEET
+  </button>
+  <button class="btn btn-full" id="print-btn" onclick="printLabel()" disabled
+    style="background:#1c1c1c;border:1.5px solid #333;color:#888;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px;border-radius:12px">
+    🖨 GENERATE LABEL IMAGE
+  </button>
+  <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.7">
+    Submit adds to Google Sheet · Print from P-touch Editor on PC
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let taxMode='none',scanning=false,html5QrCode=null,autoNameEnabled=true,category='Beer';
+// IMPORTANT: Replace this URL with your deployed Apps Script URL
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby1EVh6KOWqSuidGaZZqZY1hAEBi06hoNdywruU4baElfCQ1xn7DARsWRnqhT_hIt4PTQ/exec';
+
+async function toggleScan(){
+  if(scanning){stopScan();return;}
+  try{
+    const vw=document.getElementById('video-wrap');
+    vw.innerHTML='';vw.style.display='block';
+    html5QrCode=new Html5Qrcode('video-wrap');
+    document.getElementById('scan-btn-text').textContent='Stop Scanning';
+    document.getElementById('scan-btn-icon').textContent='⏹';
+    document.getElementById('scan-btn').classList.replace('btn-gold','btn-red');
+    setStatus('scanning','Camera warming up…');scanning=true;
+    await html5QrCode.start(
+      {facingMode:'environment'},
+      {fps:20,qrbox:{width:260,height:100},aspectRatio:1.777,
+       formatsToSupport:[Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,Html5QrcodeSupportedFormats.ITF],
+       experimentalFeatures:{useBarCodeDetectorIfSupported:true}},
+      (txt)=>{stopScan();onBarcodeFound(txt);},
+      ()=>{}
+    );
+    // Camera takes ~2-3s to focus on iOS — show countdown then ready signal
+    let secs=3;
+    const warmup=setInterval(()=>{
+      secs--;
+      if(secs>0&&scanning)setStatus('scanning','Ready in '+secs+'…');
+      else if(secs<=0&&scanning){setStatus('scanning','Scanning…');clearInterval(warmup);}
+      else clearInterval(warmup);
+    },1000);
+  }catch(e){stopScan();showToast('Camera error: '+(e.message||e),'#c0392b');}
+}
+
+async function stopScan(){
+  scanning=false;
+  if(html5QrCode){try{await html5QrCode.stop();}catch(e){}try{html5QrCode.clear();}catch(e){}html5QrCode=null;}
+  const vw=document.getElementById('video-wrap');
+  vw.style.display='none';vw.innerHTML='';
+  document.getElementById('scan-btn-text').textContent='Scan Barcode';
+  document.getElementById('scan-btn-icon').textContent='📷';
+  document.getElementById('scan-btn').classList.replace('btn-red','btn-gold');
+  setStatus('ready','Ready');
+}
+
+function applyManual(){
+  const val=document.getElementById('manual-bc').value.trim();
+  if(!val)return;
+  document.getElementById('manual-bc').value='';
+  onBarcodeFound(val);
+}
+
+function onBarcodeFound(code){
+  setStatus('found','Found: '+code);
+  document.getElementById('item-bc').value=code;
+  document.getElementById('item-bc').classList.add('filled');
+  updatePreview();
+  showToast('✓ Barcode: '+code);
+  checkDuplicate(code);
+}
+
+async function checkDuplicate(code){
+  // Check all category sheets for existing barcode
+  try {
+    const sheetId='1rCv5J5Gf_7VuZxb8_ops3p14rxFKUf6REheupPW1lp4';
+    const categories=['Beer','Liquor','RTD','Wine','NA Drinks','Food','Household Items'];
+    for(const cat of categories){
+      const url='https://docs.google.com/spreadsheets/d/'+sheetId+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(cat);
+      const r=await fetch(url);
+      const csv=await r.text();
+      const lines=csv.split('\n').slice(1);
+      for(const line of lines){
+        if(!line.trim())continue;
+        const cols=line.match(/(".*?"|[^,]+)(?=,|$)/g)||[];
+        const barcode=cols[0]?cols[0].replace(/"/g,'').trim():'';
+        if(barcode===code){
+          const name=cols[1]?cols[1].replace(/"/g,'').trim():'';
+          const price=cols[2]?cols[2].replace(/"/g,'').replace('$','').trim():'';
+          const tax=cols[3]?cols[3].replace(/"/g,'').trim():'None';
+          // Load existing data
+          document.getElementById('item-name').value=name.toUpperCase();
+          document.getElementById('item-name').classList.add('filled');
+          document.getElementById('item-price').value=price;
+          // Set tax mode
+          if(tax.includes('CRV'))setTax('crv');
+          else if(tax.includes('TAX')||tax.includes('Tax'))setTax('tax');
+          else setTax('none');
+          onNameInput();
+          updatePreview();
+          showToast('⚠️ Item exists in '+cat+' — edit & resubmit to update','#d4a843');
+          // Mark as update mode
+          document.getElementById('submit-btn').textContent='📋 UPDATE IN SHEET';
+          document.getElementById('submit-btn').dataset.updateCat=cat;
+          document.getElementById('submit-btn').dataset.updateBarcode=code;
+          return;
+        }
+      }
+    }
+    // Not found — do normal lookup
+    lookupProduct(code);
+  } catch(e){
+    lookupProduct(code);
+  }
+}
+
+async function lookupProduct(code){
+  if(!autoNameEnabled){
+    document.getElementById('item-name').value='';
+    document.getElementById('item-name').classList.remove('filled');
+    document.getElementById('item-price').value='';
+    showToast('Barcode scanned — enter name manually');
+    setTimeout(()=>document.getElementById('item-name').focus(),300);return;
+  }
+  document.getElementById('lookup-spinner').style.display='block';
+  document.getElementById('item-name').value='';
+  document.getElementById('item-name').classList.remove('filled');
+  document.getElementById('item-price').value='';
+  try{
+    const r=await fetch('https://world.openfoodfacts.org/api/v0/product/'+code+'.json');
+    const d=await r.json();
+    if(d.status===1){
+      const p=d.product;
+      const raw=p.product_name_en||p.product_name||'';
+      const brand=p.brands?p.brands.split(',')[0].trim():'';
+      const qty=p.quantity||'';
+      const name=raw||(brand?brand+(qty?' '+qty:''):'');
+      if(name){applyName(name,p);return;}
+    }
+  }catch(e){}
+  try{
+    const r2=await fetch('https://api.upcitemdb.com/prod/trial/lookup?upc='+code);
+    if(r2.status===429){
+      document.getElementById('lookup-spinner').style.display='none';
+      showToast('Daily lookup limit reached (100/day) — enter name manually','#c0392b');
+      setTimeout(()=>document.getElementById('item-name').focus(),300);return;
+    }
+    const d2=await r2.json();
+    if(d2.code==='RATE_LIMIT_EXCEEDED'||d2.code==='TOO_MANY_REQUESTS'){
+      document.getElementById('lookup-spinner').style.display='none';
+      showToast('Daily lookup limit reached (100/day) — enter name manually','#c0392b');return;
+    }
+    if(d2.items&&d2.items.length>0&&d2.items[0].title){applyName(d2.items[0].title,d2.items[0]);return;}
+  }catch(e){}
+  document.getElementById('lookup-spinner').style.display='none';
+  showToast('Product not found — enter name manually','#d4a843');
+  setTimeout(()=>document.getElementById('item-name').focus(),300);
+}
+
+function formatLiquorStoreName(raw,pd){
+  let s=(raw||'').replace(/[™®©]/g,'').replace(/\s+/g,' ').trim();
+  let sz=(pd&&pd.quantity)?pd.quantity.trim():'';
+  if(!sz){const m=s.match(/(\d+(?:\.\d+)?\s*x\s*\d+(?:\.\d+)?\s*(?:ml|l|oz|fl\s*oz)|\d+(?:\.\d+)?\s*(?:ml|l|oz|fl\s*oz)|\d+\s*(?:pk|pack))/i);if(m)sz=m[0];}
+  sz=sz.replace(/fluid\s*ounce[s]?/gi,'oz').replace(/milliliter[s]?/gi,'ml').replace(/\bliter[s]?\b/gi,'L').replace(/ounce[s]?/gi,'oz').replace(/\s+/g,'').replace(/pack/gi,'pk').trim();
+  let con='';
+  if(/\bcan[s]?\b/i.test(s))con='Can';else if(/\bbottle[s]?\b/i.test(s))con='Btl';
+  let cl=s.replace(/(\d+(?:\.\d+)?\s*x\s*)?\d+(?:\.\d+)?\s*(?:ml|l|oz|fl\s*oz)/gi,'').replace(/\d+\s*(?:pk|pack|count|ct|cans?|bottles?)/gi,'').replace(/\b(?:can[s]?|bottle[s]?|pack|pk)\b/gi,'').replace(/\s+/g,' ').trim();
+  let res=[cl,sz,con].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+  if(res.length<=24)return res.toUpperCase();
+  res=[cl,sz].filter(Boolean).join(' ').trim();
+  if(res.length<=24)return res.toUpperCase();
+  const ab=[[/\bLight\b/g,'Lt'],[/\bOriginal\b/gi,'Orig'],[/\bSpecial\b/gi,'Spcl'],[/\bWhiskey\b/gi,'Wsky'],[/\bWhisky\b/gi,'Wsky'],[/\bTequila\b/gi,'Teq'],[/\bVodka\b/gi,'Vdka'],[/\bBourbon\b/gi,'Brbn'],[/\bBlended\b/gi,'Blnd'],[/\bReserve\b/gi,'Rsrv'],[/\bBlack\b/gi,'Blk'],[/\bDouble\b/gi,'Dbl'],[/\bSingle\b/gi,'Sgl'],[/\bSmooth\b/gi,'Smth'],[/\bPremium\b/gi,'Prem']];
+  for(const[p,r]of ab){res=res.replace(p,r);if(res.length<=24)return res.toUpperCase();}
+  let cut=res.slice(0,24);const ls=cut.lastIndexOf(' ');if(ls>14)cut=cut.slice(0,ls);
+  return cut.trim().toUpperCase();
+}
+
+function estimatePrice(raw){
+  const s=(raw||'').toLowerCase();
+  function oz(str){let m=str.match(/(\d+(?:\.\d+)?)\s*oz/i);if(m)return parseFloat(m[1]);m=str.match(/(\d+(?:\.\d+)?)\s*ml/i);if(m)return parseFloat(m[1])*0.033814;m=str.match(/(\d+(?:\.\d+)?)\s*L\b/i);if(m)return parseFloat(m[1])*33.814;return null;}
+  function pk(str){const m=str.match(/(\d+)\s*(?:pk|pack|count|ct|can|bottle)/i);return m?parseInt(m[1]):null;}
+  const o=oz(s),p=pk(s);
+  if(/\b(beer|lager|ale|ipa|stout|modelo|corona|heineken|coors|miller|bud|budweiser|pacifico|dos equis|tecate|stella|guinness|michelob|natural|natty|keystone|pabst|pbr|blue moon|sierra nevada|lagunitas)\b/i.test(s)){
+    if(p&&o){if(p>=24)return(p*o*0.075).toFixed(2);if(p>=12)return(p*o*0.082).toFixed(2);if(p>=6)return(p*o*0.095).toFixed(2);}
+    if(o){if(o>=22)return(o*0.18).toFixed(2);if(o>=16)return(o*0.20).toFixed(2);return(o*0.22).toFixed(2);}
+    return'12.99';}
+  if(/\b(wine|chardonnay|cabernet|merlot|pinot|sauvignon|riesling|rosé|rose|prosecco|champagne|moscato|malbec)\b/i.test(s)){if(o&&o>=50)return'14.99';return'11.99';}
+  if(/\b(vodka|tito|smirnoff|absolut|grey goose|ketel|belvedere|ciroc|skyy|new amsterdam|svedka|burnett)\b/i.test(s)){if(o&&o>=59)return'34.99';if(o&&o>=33)return'22.99';if(o&&o>=25)return'17.99';return'13.99';}
+  if(/\b(tequila|patron|casamigos|don julio|jose cuervo|espolon|hornitos|1800|herradura|cazadores|el jimador|sauza)\b/i.test(s)){if(o&&o>=59)return'49.99';if(o&&o>=33)return'34.99';return'27.99';}
+  if(/\b(whiskey|whisky|bourbon|jack daniel|jim beam|maker|wild turkey|woodford|knob creek|buffalo trace|bulleit|jameson|johnnie walker|crown royal|evan williams)\b/i.test(s)){if(o&&o>=59)return'39.99';if(o&&o>=33)return'27.99';if(o&&o>=25)return'22.99';return'13.99';}
+  if(/\b(rum|bacardi|captain morgan|malibu|havana|myers|kraken|sailor jerry)\b/i.test(s)){if(o&&o>=59)return'29.99';if(o&&o>=25)return'17.99';return'14.99';}
+  if(/\b(gin|tanqueray|bombay|hendrick|beefeater|gordon|aviation)\b/i.test(s)){if(o&&o>=59)return'34.99';if(o&&o>=25)return'22.99';return'18.99';}
+  if(/\b(brandy|cognac|hennessy|remy martin|courvoisier|martell|e&j|paul masson)\b/i.test(s)){if(o&&o>=59)return'44.99';if(o&&o>=25)return'29.99';return'24.99';}
+  if(o&&o>=59)return'29.99';if(o&&o>=25)return'18.99';if(o&&o>=12)return'11.99';
+  return null;
+}
+
+function applyName(raw,pd){
+  document.getElementById('lookup-spinner').style.display='none';
+  const fmt=formatLiquorStoreName(raw,pd);
+  document.getElementById('item-name').value=fmt;
+  document.getElementById('item-name').classList.add('filled');
+  onNameInput();
+  const est=estimatePrice(raw);
+  if(est){document.getElementById('item-price').value=est;showToast('✓ Found! Est. $'+est+' — confirm before printing');}
+  else showToast('✓ Product found! Enter price.');
+  updatePreview();
+  setTimeout(()=>document.getElementById('item-price').focus(),400);
+}
+
+function onNameInput(){
+  const v=document.getElementById('item-name').value;const l=v.length;
+  const cc=document.getElementById('char-count');
+  cc.textContent=l+' / 24';
+  cc.style.color=l>22?'#e74c3c':l>18?'#f39c12':'var(--muted)';
+}
+
+function toggleAutoName(){
+  autoNameEnabled=!autoNameEnabled;
+  const tog=document.getElementById('auto-name-toggle');
+  const knob=document.getElementById('auto-name-knob');
+  const sub=document.getElementById('auto-name-sub');
+  if(autoNameEnabled){tog.style.background='var(--gold)';knob.style.left='23px';sub.textContent='On — auto-fills name from barcode';}
+  else{tog.style.background='#333';knob.style.left='3px';sub.textContent="Off — you'll enter name manually";}
+}
+
+function setCategory(cat){
+  category=cat;
+  ['Beer','Liquor','RTD','Wine','NA Drinks','Food','Household Items'].forEach(c=>{
+    const btn=document.getElementById('cat-'+c);
+    if(!btn)return;
+    btn.className='tax-btn';
+    if(c===cat)btn.classList.add('active-none');
+  });
+}
+
+function submitToSheet(){
+  const name=document.getElementById('item-name').value;
+  const price=document.getElementById('item-price').value;
+  const bc=document.getElementById('item-bc').value;
+  if(!price||!name){showToast('Need name and price to submit','#c0392b');return;}
+
+  const btn=document.getElementById('submit-btn');
+  btn.textContent='⏳ Submitting…';
+  btn.disabled=true;
+
+  const isUpdate = btn.dataset.updateBarcode === bc;
+  const taxVal = taxMode==='none'?'None':taxMode==='tax'?'+TAX':'+TAX/CRV';
+
+  const payload={
+    barcode: bc,
+    name: name.toUpperCase(),
+    price: '$'+parseFloat(price).toFixed(2),
+    tax: taxVal,
+    category: category,
+    update: isUpdate,
+    updateCategory: btn.dataset.updateCat||null
+  };
+
+  fetch(SCRIPT_URL,{
+    method:'POST',
+    mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  }).then(()=>{
+    showToast(isUpdate?'✓ Updated in sheet!':'✓ Added to '+category+' sheet!','#27ae60');
+    // Reset for next item
+    document.getElementById('item-name').value='';
+    document.getElementById('item-name').classList.remove('filled');
+    document.getElementById('item-bc').value='';
+    document.getElementById('item-bc').classList.remove('filled');
+    document.getElementById('item-price').value='';
+    document.getElementById('manual-bc').value='';
+    delete btn.dataset.updateBarcode;
+    delete btn.dataset.updateCat;
+    setStatus('ready','Ready');
+    setTax('none');
+    updatePreview();
+    btn.textContent='📋 SUBMIT TO SHEET';
+    btn.disabled=false;
+  }).catch(err=>{
+    showToast('Submit failed — check connection','#c0392b');
+    btn.textContent='📋 SUBMIT TO SHEET';
+    btn.disabled=false;
+  });
+}
+
+function setTax(mode){
+  taxMode=mode;
+  ['none','tax','crv'].forEach(m=>{
+    const btn=document.getElementById('tax-'+m);
+    btn.className='tax-btn';
+    if(m===mode)btn.classList.add('active-'+(mode==='none'?'none':mode==='tax'?'tax':'crv'));
+  });
+  updatePreview();
+}
+
+function drawCode128(canvas,value){
+  if(!value){canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);return;}
+  const C='!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
+  const CB=' '+C;
+  const P=['11011001100','11001101100','11001100110','10010011000','10010001100','10001001100','10011001000','10011000100','10001100100','11001001000','11001000100','11000100100','10110011100','10011011100','10011001110','10111001100','10011101100','10011100110','11001110010','11001011100','11001001110','11011100100','11001110100','11101101110','11101001100','11100101100','11100100110','11101100100','11100110100','11100110010','11011011000','11011000110','11000110110','10100011000','10001011000','10001000110','10110001000','10001101000','10001100010','11010001000','11000101000','11000100010','10110111000','10110001110','10001101110','10111011000','10111000110','10001110110','11101110110','11010001110','11000101110','11011101000','11011100010','11011101110','11101011000','11101000110','11100010110','11101101000','11101100010','11100011010','11101111010','11001000010','11110001010','10100110000','10100001100','10010110000','10010000110','10000101100','10000100110','10110010000','10110000100','10011010000','10011000010','10000110100','10000110010','11000010010','11001010000','11110111010','11000010100','10001111010','10100111100','10010111100','10010011110','10111100100','10011110100','10011110010','11110100100','11110010100','11110010010','11011011110','11011110110','11110110110','10101111000','10100011110','10001011110','10111101000','10111100010','11110101000','11110100010','10111011110','10111101110','11101011110','11110101110','11010000100','11010010000','11010011100','11000111010'];
+  const SP='1100011101011',SB=104;
+  let codes=[SB],chk=SB;
+  const str=String(value).slice(0,22);
+  for(let i=0;i<str.length;i++){const idx=CB.indexOf(str[i]);if(idx<0)continue;codes.push(idx);chk+=idx*(i+1);}
+  codes.push(chk%103);
+  let bits='10';for(let c of codes)bits+=P[c];bits+=SP+'10';
+  const W=canvas.width,H=canvas.height,bw=W/bits.length;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#000';
+  for(let i=0;i<bits.length;i++){if(bits[i]==='1')ctx.fillRect(Math.floor(i*bw),0,Math.max(1,Math.ceil(bw)),H);}
+}
+
+function buildSVG(value){
+  if(!value)return'';
+  const CB=' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
+  const P=['11011001100','11001101100','11001100110','10010011000','10010001100','10001001100','10011001000','10011000100','10001100100','11001001000','11001000100','11000100100','10110011100','10011011100','10011001110','10111001100','10011101100','10011100110','11001110010','11001011100','11001001110','11011100100','11001110100','11101101110','11101001100','11100101100','11100100110','11101100100','11100110100','11100110010','11011011000','11011000110','11000110110','10100011000','10001011000','10001000110','10110001000','10001101000','10001100010','11010001000','11000101000','11000100010','10110111000','10110001110','10001101110','10111011000','10111000110','10001110110','11101110110','11010001110','11000101110','11011101000','11011100010','11011101110','11101011000','11101000110','11100010110','11101101000','11101100010','11100011010','11101111010','11001000010','11110001010','10100110000','10100001100','10010110000','10010000110','10000101100','10000100110','10110010000','10110000100','10011010000','10011000010','10000110100','10000110010','11000010010','11001010000','11110111010','11000010100','10001111010','10100111100','10010111100','10010011110','10111100100','10011110100','10011110010','11110100100','11110010100','11110010010','11011011110','11011110110','11110110110','10101111000','10100011110','10001011110','10111101000','10111100010','11110101000','11110100010','10111011110','10111101110','11101011110','11110101110','11010000100','11010010000','11010011100','11000111010'];
+  const SP='1100011101011',SB=104;
+  let codes=[SB],chk=SB;
+  const str=String(value).slice(0,22);
+  for(let i=0;i<str.length;i++){const idx=CB.indexOf(str[i]);if(idx<0)continue;codes.push(idx);chk+=idx*(i+1);}
+  codes.push(chk%103);
+  let bits='10';for(let c of codes)bits+=P[c];bits+=SP+'10';
+  const bw=1.0,bh=14;let rects='';
+  for(let i=0;i<bits.length;i++){if(bits[i]==='1')rects+='<rect x="'+(i*bw).toFixed(1)+'" y="0" width="'+bw+'" height="'+bh+'" fill="#000"/>';}
+  const sw=(bits.length*bw).toFixed(1);
+  return'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+sw+' '+bh+'" width="100%" height="'+bh+'px" style="display:block">'+rects+'</svg>';
+}
+
+function updatePreview(){
+  const name=document.getElementById('item-name').value||'PRODUCT NAME';
+  const price=document.getElementById('item-price').value;
+  const bc=document.getElementById('item-bc').value;
+  document.getElementById('lbl-name').textContent=name.toUpperCase();
+  document.getElementById('lbl-price').textContent=price?'$'+parseFloat(price).toFixed(2):'$-.--';
+  const tx=document.getElementById('lbl-tax');
+  if(taxMode==='none')tx.style.display='none';
+  else{tx.style.display='block';tx.textContent=taxMode==='tax'?'+TAX':'+TAX/CRV';}
+  const cv=document.getElementById('lbl-canvas');
+  if(bc){drawCode128(cv,bc);document.getElementById('lbl-bcnum').textContent=bc;}
+  else{cv.getContext('2d').clearRect(0,0,cv.width,cv.height);document.getElementById('lbl-bcnum').textContent='';}
+  const ready=price&&(document.getElementById('item-name').value||bc);
+  document.getElementById('print-btn').disabled=!ready;
+  const submitBtn=document.getElementById('submit-btn');
+  if(submitBtn)submitBtn.disabled=!ready;
+}
+
+function printLabel(){
+  const name=document.getElementById('item-name').value;
+  const price=document.getElementById('item-price').value;
+  const bc=document.getElementById('item-bc').value;
+  if(!price)return;
+
+  // Render label to canvas at 300dpi: 62mm x 29mm = 732 x 342 px
+  const DPI=300, mmToPx=DPI/25.4;
+  const W=Math.round(62*mmToPx), H=Math.round(29*mmToPx); // 732 x 342
+  const cv=document.createElement('canvas');
+  cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+
+  // White background
+  ctx.fillStyle='#fff';
+  ctx.fillRect(0,0,W,H);
+
+  const pad=Math.round(2*mmToPx);
+  const midX=Math.round(42*mmToPx); // barcode+name left, price right
+
+  // Product name
+  ctx.fillStyle='#000';
+  ctx.font='bold '+Math.round(7.5*mmToPx/2.83)+'px Arial Narrow,Arial';
+  ctx.textBaseline='top';
+  const nameStr=(name||'').toUpperCase();
+  // Word wrap name into midX-pad width
+  const maxW=midX-pad*2;
+  const words=nameStr.split(' ');
+  let lines=[],cur='';
+  for(const w of words){
+    const test=cur?cur+' '+w:w;
+    if(ctx.measureText(test).width>maxW&&cur){lines.push(cur);cur=w;}
+    else cur=test;
+  }
+  if(cur)lines.push(cur);
+  const lineH=Math.round(9*mmToPx/2.83);
+  lines.slice(0,3).forEach((l,i)=>ctx.fillText(l,pad,pad+i*lineH));
+
+  // Price
+  const priceStr='$'+parseFloat(price).toFixed(2);
+  const priceFontPx=Math.round(20*mmToPx/2.83);
+  ctx.font='900 '+priceFontPx+'px Arial Narrow,Arial';
+  ctx.textAlign='right';
+  ctx.textBaseline='middle';
+  ctx.fillText(priceStr,W-pad,H/2-(taxMode!=='none'?Math.round(3*mmToPx/2.83):0));
+
+  // Tax badge
+  if(taxMode!=='none'){
+    const taxStr=taxMode==='tax'?'+TAX':'+TAX/CRV';
+    ctx.font='bold '+Math.round(5*mmToPx/2.83)+'px Arial,sans-serif';
+    ctx.fillStyle='#c0392b';
+    ctx.textAlign='right';
+    ctx.textBaseline='top';
+    ctx.fillText(taxStr,W-pad,H/2+Math.round(2*mmToPx/2.83));
+  }
+
+  // Barcode
+  if(bc){
+    const bcCanvas=document.createElement('canvas');
+    bcCanvas.width=Math.round(midX-pad*2);
+    bcCanvas.height=Math.round(10*mmToPx);
+    drawCode128(bcCanvas,bc);
+    ctx.drawImage(bcCanvas,pad,H-pad-bcCanvas.height);
+    // Barcode number
+    ctx.font=Math.round(3.5*mmToPx/2.83)+'px monospace';
+    ctx.fillStyle='#555';
+    ctx.textAlign='left';
+    ctx.textBaseline='top';
+    ctx.fillText(bc,pad,H-pad-bcCanvas.height+bcCanvas.height+2);
+  }
+
+  // Download image — user opens from Files app → Share → Print
+  cv.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='label.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    showToast('Label saved — open Files → label.png → Share → Print');
+  },'image/png');
+}
+
+function setStatus(state,text){
+  const dot=document.getElementById('status-dot');
+  dot.className='status-dot';
+  if(state!=='ready')dot.classList.add(state);
+  document.getElementById('status-text').textContent=text;
+}
+
+function showToast(msg,bg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.background=bg||'#222';t.style.borderColor=bg||'#333';
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+document.getElementById('manual-bc').addEventListener('keydown',e=>{if(e.key==='Enter')applyManual();});
+updatePreview();setTax('none');setCategory('Beer');
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
